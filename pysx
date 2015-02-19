@@ -1,0 +1,574 @@
+#!/usr/bin/env python3 
+
+## pysx: convert a python program into an S-Expressified (Racket-compatible)
+#        version of its AST
+
+## Author: Matt Might (@mattmight)
+## Site:   http://matt.might.net/
+
+
+## The S-Expression version is based on the AST package:
+
+# https://docs.python.org/3/library/ast.html 
+
+
+import ast
+import sys 
+
+
+input = "".join(sys.stdin.readlines())
+
+tree = ast.parse(input) 
+
+## Helpers ##
+
+def racket_escape(s):
+ 
+  if type(s) == str:
+    # BUG: Are these sufficient?
+    s = s.replace('\\','\\\\')
+    s = s.replace('"','\\"')
+    s = s.replace("'","\\'")
+    s = s.replace("\n","\\n")
+    s = s.replace("\r","\\r")
+
+  elif type(s) == bytes:
+    t = ''
+    for c in s:
+      t = t + '\\x' + hex(c)[2:]
+    s = t
+ 
+  else:
+    raise Exception('not a string type')
+
+  return s
+
+
+## Module ## 
+
+def module_as_sx (module):
+  res = ""
+  res += "(Module "
+  for stmt in module.body:
+    res += stmt_as_sx(stmt)
+  res += ")"
+  return res 
+
+
+
+## Expressions ##
+
+def expr_as_sx (expr):
+  res = ""
+
+  # BoolOp(boolop op, expr* values):
+  if type(expr) is ast.BoolOp:
+    res += ("(BoolOp " + boolop_as_sx(expr.op) +" "
+            + exprs_as_sx(expr.values) +
+            + ")")
+
+  # BinOp(expr left, operator op, expr right):
+  elif type(expr) is ast.BinOp:
+    res += ("(BinOp " + expr_as_sx(expr.left) + " "
+                      + binop_as_sx(expr.op) + " "
+                      + expr_as_sx(expr.right) + ")")
+
+  # UnaryOp(unaryop op, expr operand):
+  elif type(expr) is ast.UnaryOp:
+    res += "(UnaryOp " +unaryop_as_sx(expr.op)+ " " +expr_as_sx(expr.operand)+ ")"
+
+  # Lambda(arguments args, expr body):
+  elif type(expr) is ast.Lambda:
+    res += ("(Lambda "+arguments_as_sx(expr.args)+" "
+            +expr_as_sx(expr.body)+")")
+
+  # IfExp(expr test, expr body, expr orelse):
+  elif type(expr) is ast.IfExp:
+    res += ("(IfExp "+expr_as_sx(expr.test)+" "
+                     +expr_as_sx(expr.body)+" "
+                     +expr_as_sx(expr.orelse)+")")
+
+  # Dict(expr* keys, expr* values):
+  elif type(expr) is ast.Dict:
+    res += "(Dict (keys " + ' '.join([expr_as_sx(k) for k in expr.keys]) 
+    res += " (values "+ ' '.join([expr_as_sx(v) for v in expr.values]) +")"
+    res += ")"
+           
+  # Set(expr* elts):
+  elif type(expr) is ast.Set:
+    res += "(Set "
+    res += ' '.join([expr_as_sx(e) for e in expr.elts])
+    res += ")"
+
+  # ListComp(expr elt, comprehension* generators):
+  elif type(expr) is ast.ListComp:
+    res += ("(ListComp " + expr_as_sx(expr.elt) + " "
+            + ' '.join([comp_as_sx(comp) for comp in expr.generators]) + ")")
+
+  # SetComp(expr elt, comprehension* generators):
+  elif type(expr) is ast.SetComp:
+    res += ("(SetComp " + expr_as_sx(expr.elt) + " "
+            + ' '.join([comp_as_sx(comp) for comp in expr.generators]) + ")")
+
+  # DictComp(expr key, expr value, comprehension* generators):
+  elif type(expr) is ast.DictComp:
+    res += ("(SetComp " + expr_as_sx(expr.key) + " " + expr_as_sx(expr.value) + " "
+            + ' '.join([comp_as_sx(comp) for comp in expr.generators]) + ")")
+
+
+  # GeneratorExp(expr elt, comprehension* generators):
+  elif type(expr) is ast.GeneratorExp:
+    res += ("(GeneratorExp " + expr_as_sx(expr.elt) + " "
+            + ' '.join([comp_as_sx(comp) for comp in expr.generators]) + ")")
+    
+  # Yield(expr? value):
+  elif type(expr) is ast.Yield:
+    if (expr.value is None):
+      res += ("(Yield)")
+    else:
+      res += ("(Yield "+expr_as_sx(expr.value)+")")
+
+  # YieldFrom(expr value):
+  elif type(expr) is ast.YieldFrom:
+    res += ("(YieldFrom "+expr_as_sx(expr.value)+")")
+
+  # Compare(expr left, cmpop* ops, expr* comparators):
+  elif type(expr) is ast.Compare:
+    res += "(Compare"
+    res += " (left " +expr_as_sx(expr.left)+ ")"
+    res += " (ops " + " ".join([cmpop_as_sx(op) for op in expr.ops]) + ")"
+    res += " (comparators " + " ".join([expr_as_sx(e) for e in expr.comparators]) + ")"
+    res += ")"
+
+  # Call(expr func, expr* args, keyword* keywords,
+  #      expr? starargs, expr? kwargs):
+  elif type(expr) is ast.Call:
+    res += "(Call "
+    res += " (func "+expr_as_sx(expr.func)+")"
+    res += " (args "+ " ".join([expr_as_sx(a) for a in expr.args])+")"
+    res += " (keywords " + " ".join(["(" +kw.arg+ " " +expr_as_sx(kw.value)+ ")" for kw in expr.keywords])+ ")"
+    if expr.starargs is None:
+      res += " (starargs #f)"
+    else:
+      res += " (starargs "+expr_as_sx(expr.starargs)+")"
+    if expr.kwargs is None:
+      res += " (kwargs #f)"
+    else:
+      res += " (kwargs "+expr_as_sx(expr.kwargs)+")"
+    res += ")"
+
+  # Num(object n):
+  elif type(expr) is ast.Num:
+    if type(expr.n) == complex:
+      res += "(Num "+str(expr.n.real)+"+"+str(expr.n.imag)+"j)"
+    else:
+      res += "(Num "+str(expr.n)+")"
+
+  # Str(string s):
+  elif type(expr) is ast.Str:
+    s = racket_escape(expr.s)
+    res += "(Str \"" +s+"\")"
+
+  # Bytes(bytes s)
+  elif type(expr) is ast.Bytes:
+    bs = racket_escape(expr.s)
+    res += "(Bytes #\""+str(bs)+"\")"
+
+  # NameConstant(singleton value):
+  elif type(expr) is ast.NameConstant:
+    res += "(NameConstant "+str(expr.value)+")"
+
+  # Ellipsis:
+  elif type(expr) is ast.Ellipsis:
+    res += "Ellipsis"
+
+  # Attribute(expr value, identifier attr, expr_context ctx):
+  elif type(expr) is ast.Attribute:
+    res += "(Attribute "+expr_as_sx(expr.value)+" "+expr.attr+ ")"
+
+  # Subscript(expr value, slice slice, expr_context ctx):
+  elif type(expr) is ast.Subscript:
+    res += "(Subscript "+expr_as_sx(expr.value)+" "+slice_as_sx(expr.slice)+")"
+  
+  # Starred(expr value, expr_context ctx):
+  elif type(expr) is ast.Starred:
+    res += "(Starred "+expr_as_sx(expr.value)+")"
+
+  # Name(identifier id, expr_context ctx):
+  elif type(expr) is ast.Name:
+    res += "(Name "+str(expr.id)+")"
+
+  # List(expr* elts, expr_context ctx):
+  elif type(expr) is ast.List:
+    res += "(List " + " ".join([expr_as_sx(e) for e in expr.elts])  + ")"
+
+  # Tuple(expr* elts, expr_context ctx):
+  elif type(expr) is ast.Tuple:
+    res += "(Tuple " + " ".join([expr_as_sx(e) for e in expr.elts])  + ")"
+
+  else:
+    raise Exception("unhandled: "+str(type(expr)))
+
+  return res
+
+def exprs_as_sx(exprs):
+  return ' '.join(expr_as_sx(e) for e in exprs)
+
+
+# comprehension = (expr target, expr iter, expr* ifs):
+def comp_as_sx(comp):
+  res = ""
+  res += "[for " 
+  res += expr_as_sx(comp.target) 
+  res += " in "
+  res += expr_as_sx(comp.iter)
+  res += " if "
+  res += ' '.join([expr_as_sx(e) for e in comp.ifs])
+  res += "]"
+  return res
+
+
+# slice = Slice(expr? lower, expr? upper, expr? step) 
+#       | ExtSlice(slice* dims) 
+#       | Index(expr value) 
+def slice_as_sx(s):
+
+  # Index:
+  if type(s) is ast.Index:
+    return "(Index "+expr_as_sx(s.value)+")"
+
+  # Slice:
+  elif type(s) is ast.Slice:
+    return ("(Slice " +(expr_as_sx(s.lower) if s.lower is not None else '#f')+ " "
+                      +(expr_as_sx(s.upper) if s.upper is not None else '#f')+ " "
+                      +(expr_as_sx(s.step) if s.step is not None else '#f') + ")")
+
+  # ExtSlice:
+  elif type(s) is ast.ExtSlice:
+    return ("(ExtSlice " + ' '.join([slice_as_sx(e) for e in s.dims]) + ")")
+
+  else:
+    raise Exception("unknown slice: " + str(s))
+
+
+# boolop = And | Or 
+def boolop_as_sx(op):
+  if type(op) is ast.And:
+    return "And"
+  elif type(op) is ast.Or:
+    return "Or"
+  else:
+    raise Exception("unknown bool op")
+
+
+# unaryop = Invert | Not | UAdd | USub
+def unaryop_as_sx(op):
+ if   type(op) is ast.Not:    return "Not"
+ elif type(op) is ast.UAdd:   return "UAdd"
+ elif type(op) is ast.USub:   return "USub"
+ elif type(op) is ast.Invert: return "Invert"
+ else:
+   raise Exception("unknown unary op: " + str(op))
+
+
+# cmpop = Eq | NotEq | Lt | LtE | Gt | GtE | Is | IsNot | In | NotIn
+def cmpop_as_sx (op):
+  if   type(op) is ast.Eq:    return "Eq"
+  elif type(op) is ast.NotEq: return "NotEq"
+  elif type(op) is ast.Lt:    return "Lt"
+  elif type(op) is ast.LtE:   return "LtE"
+  elif type(op) is ast.GtE:   return "GtE"
+  elif type(op) is ast.Is:    return "Is"
+  elif type(op) is ast.IsNot: return "IsNot"
+  elif type(op) is ast.In:    return "In"
+  elif type(op) is ast.NotIn: return "NotIn"
+  else:
+    raise Exception("unknown comparison: " + str(op))
+  
+# operator = Add | Sub | Mult | Div | Mod | Pow | LShift 
+#            | RShift | BitOr | BitXor | BitAnd | FloorDiv
+def binop_as_sx (op):
+  if   type(op) is ast.Add:  return "Add"
+  elif type(op) is ast.Sub:  return "Sub"
+  elif type(op) is ast.Mult: return "Mult"
+  elif type(op) is ast.Div:  return "Div"
+  elif type(op) is ast.Mod:  return "Mod"
+  elif type(op) is ast.Pow:  return "Pow"
+  
+  elif type(op) is ast.LShift:   return "LShift"
+  elif type(op) is ast.RShift:   return "RShift"
+  elif type(op) is ast.BitOr:    return "BitOr"
+  elif type(op) is ast.BitAnd:   return "BitAnd"
+  elif type(op) is ast.BitXor:   return "BitXor"
+
+  elif type(op) is ast.FloorDiv: return "FloorDiv"
+  else:
+    raise Exception("unknown binop: " + str(op))
+
+
+
+## Statements ## 
+
+def stmt_as_sx (stmt):
+  res = ""
+
+  # FunctionDef(identifier name, 
+  #             arguments args, 
+  #             stmt* body, 
+  #             expr* decorator_list, 
+  #             expr? returns)
+  if type(stmt) is ast.FunctionDef:
+    res += "(FunctionDef "
+    res +=  " (name " +stmt.name+ ")" 
+    res +=  " (args " + arguments_as_sx(stmt.args)+ ")"
+    res +=  " (body " + " ".join(stmt_as_sx(s) for s in stmt.body) + ")"
+    res +=  " (decorator_list " + " ".join(expr_as_sx(e) for e in stmt.decorator_list) + ")"
+    if stmt.returns is not None:
+      res +=  "  (returns " +expr_as_sx(stmt.returns)+ "))"
+    else:
+      res += "   (returns #f))" 
+
+  # ClassDef(identifier name, 
+  #          expr* bases,
+  #          keyword* keywords,
+  #          expr? starargs,
+  #          expr? kwargs,
+  #          stmt* body,
+  #          expr* decorator_list)
+  elif (type(stmt) is ast.ClassDef):
+    res += "(ClassDef"
+    res += " (name "+stmt.name+")"
+
+    res += " (bases "+exprs_as_sx(stmt.bases)+")"
+
+    res += (" (keywords " + " ".join(["(" +kw.arg+ " " +expr_as_sx(kw.value)+ ")"
+                                      for kw in stmt.keywords])+ ")")
+
+    if stmt.starargs is None:
+      res += " (starargs #f)"
+    else:
+      res += " (starargs "+expr_as_sx(stmt.starargs)+")"
+
+    if stmt.kwargs is None:
+      res += " (kwargs #f)"
+    else:
+      res += " (kwargs "+expr_as_sx(stmt.kwargs)+")"
+
+    res += " (body "+stmts_as_sx(stmt.body)+")"
+
+    res += " (decorator_list "+exprs_as_sx(stmt.decorator_list)+")"
+
+    res += ")"
+      
+
+  # Return(expr? value)
+  elif type(stmt) is ast.Return:
+    if stmt.value is not None:
+      res += "(Return "+expr_as_sx(stmt.value)+")"
+    else:
+      res += "(Return)"
+
+
+  # Delete(expr* targets)
+  elif type(stmt) is ast.Delete:
+    res += "(Delete " + exprs_as_sx(stmt.targets) + ")"
+
+  # Assign(expr* targets, expr value)
+  elif type(stmt) is ast.Assign:
+    res += ("(Assign (targets "+ exprs_as_sx(stmt.targets) +") "+
+                    "(value " +expr_as_sx(stmt.value) +"))")
+  
+
+  # AugAssign(expr target, operator op, expr value)
+  elif type(stmt) is ast.AugAssign:
+    res += "(AugAssign " +expr_as_sx(stmt.target) 
+    res +=   " " + binop_as_sx(stmt.op)
+    res +=   " " + expr_as_sx(stmt.value) + ")"
+
+  # For(expr target, expr iter, stmt* body, stmt* orelse)
+  elif type(stmt) is ast.For:
+    res += "(For "
+    res += " (target " +expr_as_sx(stmt.target)+ ")"
+    res += " (iter " +expr_as_sx(stmt.iter)+ ")"
+    res += " (body " +stmts_as_sx(stmt.body)+ ")"
+    res += " (orelse " +stmts_as_sx(stmt.orelse)+ ")"
+    res += ")"
+
+
+  # While(expr test, stmt* body, stmt* orelse)
+  elif type(stmt) is ast.While:
+    res += "(While "
+    res +=   "(test "+expr_as_sx(stmt.test)+")"
+    res +=   "(body "+stmts_as_sx(stmt.body)+")"
+    res +=   "(orelse "+stmts_as_sx(stmt.orelse)+")"
+    res += ")"
+
+  # If(expr test, stmt* body, stmt* orelse)
+  elif type(stmt) is ast.If:
+    res += "(If " 
+    res += " (test " + expr_as_sx(stmt.test) + ")"
+    res += " (body " + stmts_as_sx(stmt.body) + ")"
+    res += " (orelse " + stmts_as_sx(stmt.orelse) + ")"
+    res += ")"
+
+  # With(withitem* items, stmt* body)
+  #  where withitem = (expr context_expr, expr? optional_vars)
+  elif type(stmt) is ast.With:
+    res += "(With ("
+    for item in stmt.items:
+      vars = expr_as_sx(item.optional_vars) if item.optional_vars is not None else "#f"
+      res += "[" + expr_as_sx(item.context_expr) + " " + vars + "]"
+    res += ") " + stmts_as_sx(stmt.body) + ")"
+
+  # Raise(expr? exc, expr? cause)
+  elif type(stmt) is ast.Raise:
+    res += "(Raise"
+    if stmt.exc is not None:
+       res += " " + expr_as_sx(stmt.exc)
+    if stmt.cause is not None:
+       res += " " + expr_as_sx(stmt.cause)
+    res += ")"
+
+  # Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
+  #  where excepthandler = ExceptHandler(expr? type, identifier? name, stmt* body)
+  elif type(stmt) is ast.Try:
+
+    def handler_as_sx(handler):
+      res = ""
+      typesx = expr_as_sx(handler.type) if handler.type is not None else "#f"
+      namesx = handler.name if handler.name is not None else "#f"
+      bodysx = stmts_as_sx(handler.body)
+      res += "[except " + typesx + " " + namesx + " " + bodysx + "]"
+      return res
+
+    def handlers_as_sx(handlers):
+      return ' '.join([handler_as_sx(h) for h in handlers])
+
+    res += "(Try"
+    res += " (body " + stmts_as_sx(stmt.body) + ")"
+    res += " (handlers " + handlers_as_sx(stmt.handlers) + ")"
+    res += " (orelse " + stmts_as_sx(stmt.orelse) + ")"
+    res += " (finalbody " +stmts_as_sx(stmt.finalbody)+ ") "
+    res += ")"
+
+
+  # Assert(expr test, expr? msg)
+  elif type(stmt) is ast.Assert:
+    res += "(Assert "
+    res += expr_as_sx(stmt.test)
+    if stmt.msg is not None:
+       res += " " + expr_as_sx(stmt.msg)
+    res += ")"
+
+  # Import(alias* names)
+  #  where alias = (identifier name, identifier? asname)
+  elif type(stmt) is ast.Import:
+    res += "(Import "+ aliases_as_sx(stmt.names) +")"
+
+  # ImportFrom(identifier? module, alias* names, int? level)
+  elif type(stmt) is ast.ImportFrom:
+    res += "(ImportFrom " 
+    res +=   " (module " +(stmt.module if stmt.module is not None else "#f")+  ")"
+    res +=   " (names " +aliases_as_sx(stmt.names)+ ")"
+    res +=   " (level " +(str(stmt.level) if stmt.level is not None else "#f")+ ")"
+    res += ")"
+
+  # Global(identifier* names)
+  elif type(stmt) is ast.Global:
+    res += "(Global " +' '.join(stmt.names)+ ")"
+
+  # Nonlocal(identifier* names)
+  elif type(stmt) is ast.Nonlocal:
+    res += "(Nonlocal " +' '.join(stmt.names)+ ")"
+
+  # Expr(expr value)
+  elif type(stmt) is ast.Expr: 
+    res += "(Expr "
+    res += expr_as_sx (stmt.value)
+    res += ")"
+
+  # Pass
+  elif type(stmt) is ast.Pass:
+    res += "(Pass)"
+
+  # Break
+  elif type(stmt) is ast.Break:
+    res += "(Break)"
+
+  # Continue
+  elif type(stmt) is ast.Continue:
+    res += "(Continue)"
+
+
+  else:
+    raise Exception("unhandled: " + str(type(stmt)))
+
+  res += ")"
+  return res
+
+
+def stmts_as_sx(stmts):
+  return ' '.join(stmt_as_sx(s) for s in stmts)
+
+
+# alias = (identifier name, identifier? asname)
+def alias_as_sx(alias):
+  return "["+alias.name+" "+(alias.asname if alias.asname is not None else "#f")+"]"
+
+def aliases_as_sx(aliases):
+  return ' '.join(alias_as_sx(a) for a in aliases)
+
+
+# arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
+#              arg? kwarg, expr* defaults)
+def arguments_as_sx(arguments):
+  res = "(Arguments"
+
+  res += " (args "+ " ".join([a.arg for a in arguments.args])+ ")"
+
+  res += " (arg-types "+ " ".join([(expr_as_sx(a.annotation) if a.annotation is not None else "#f") for a in arguments.args]) + ")"
+
+  if arguments.vararg is not None:
+    res += " (vararg "+arg_as_sx(arguments.vararg)+")"
+  else:
+    res += " (vararg #f)"
+
+  res += (" (kwonlyargs "
+          + " ".join([a.arg for a in arguments.kwonlyargs]) +")")
+
+  res += (" (kwonlyarg-types "
+          + " ".join([(expr_as_sx(a.annotation) if a.annotation is not None else "#f") for a in arguments.kwonlyargs]) + ")")
+          
+  res += (" (kw_defaults "
+          + " ".join([(expr_as_sx(e) if e is not None else "#f")
+                      for e in arguments.kw_defaults]) +")")
+
+  if (arguments.kwarg is not None):
+    res += " (kwarg "+arg_as_sx(arguments.kwarg)+")"
+  else:
+    res += " (kwarg #f)"
+
+  res += (" (defaults " + 
+          " ".join([expr_as_sx(e) for e in arguments.defaults]) + ")")
+
+  res += ")"
+  return res
+
+
+
+# arg = (identifier arg, expr? annotation)
+#        attributes (int lineno, int col_offset)
+
+def arg_as_sx(arg):
+  res = ""
+  if arg.annotation is None:
+    res = arg.arg
+  else:
+     raise Exception("unhandled: annotated args")
+  return res
+
+
+
+
+print( module_as_sx(tree) )
+
