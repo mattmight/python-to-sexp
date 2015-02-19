@@ -30,11 +30,9 @@ The output fits the following the following grammar:
            (decorator_list <expr>*))
 
       | (Return <expr?>)
-
       | (Delete <expr>*)
 
       | (Assign (targets <expr>*) (value <expr>))
-
       | (AugAssign <expr> <operator> <expr>)
 
       | (For (target <expr>) (iter <expr>) (body <stmt>*) (orelse <stmt>*))
@@ -44,7 +42,6 @@ The output fits the following the following grammar:
       | (With [<withitem>*] <stmt>*)
 
       | (Raise)  |  (Raise <expr>)  | (Raise <expr> <expr>)
-
       | (Try (body <stmt>*)
              (handlers <excepthandler>*)
              (orelse <stmt>*)
@@ -52,7 +49,7 @@ The output fits the following the following grammar:
 
       | (Assert <expr>)  |  (Assert <expr> <expr>)
 
-      | (Import <alias>)
+      | (Import <alias>*)
       | (ImportFrom (module <identifier?>)
                     (names <alias>*)
                     (level <int?>))
@@ -76,7 +73,6 @@ The output fits the following the following grammar:
      | (IfExp <expr> <expr> <expr>)
 
      | (Dict (keys <expr>*) (values <expr>*))
-
      | (Set <expr>*)
 
      | (ListComp <expr> <comprehension>*)
@@ -84,12 +80,9 @@ The output fits the following the following grammar:
      | (DictComp <expr> <expr> <comprehension>*)
      | (GeneratorExp <expr> <comprehension>*)
 
-     -- the grammar constrains where yield expressions can occur
      | (Yield)  | (Yield <expr>)
      | (YieldFrom <expr>)
 
-     -- need sequences for compare to distinguish between
-     -- x < 4 < 3 and (x < 4) < 3
      | (Compare (left        <expr>) 
                 (ops         <cmpop>*)
                 (comparators <expr>*))
@@ -102,21 +95,17 @@ The output fits the following the following grammar:
 
      | (Num <number>)
      | (Str <string>)
-
-     | Bytes(bytes s)
+     | (Bytes <byte-string>)
 
      | (NameConstant True|False|None)
-
      | (Ellipsis)
 
      -- the following expression can appear in assignment context:
      | (Attribute <expr> <identifier>)
      | (Subscript <expr> <slice>)
      | (Starred <expr>)
-
      | (Name <identifier>)
      | (List <expr>*)
-
      | (Tuple <expr>*)
 
 
@@ -153,16 +142,20 @@ The output fits the following the following grammar:
  
 <arg> ::= <identifier>
 
-<arg?> ::= <arg>
-        | #f
-
 <keyword> ::== [<identifier> <expr>]
 
-<alias> = (identifier name, identifier? asname)
+<alias> ::= [<identifier> <identifier?>]
 
 <withitem> ::= [<expr> <expr?>]
 
+
+<arg?> ::= <arg> | #f
+
+<expr?> ::= <expr> | #f
+
 <int?> ::= <int> | #f
+
+<identifier?> ::= <identifier> | #f
 ```
 
 
