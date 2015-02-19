@@ -98,7 +98,7 @@ The output fits the following grammar:
      | (Str <string>)
      | (Bytes <byte-string>)
 
-     | (NameConstant True|False|None)
+     | (NameConstant <name-constant>)
      | (Ellipsis)
 
      -- the following expression can appear in assignment context:
@@ -109,10 +109,7 @@ The output fits the following grammar:
      | (List <expr>*)
      | (Tuple <expr>*)
 
-
-<expr?> ::= <expr>
-         | #f
-
+<name-constant> ::= True | False | None
 
 <slice> ::= (Slice <expr?> <expr?> <expr?>)
          |  (ExtSlice <slice>*) 
