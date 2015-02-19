@@ -3,9 +3,10 @@
 
 `pysx` converts a Python module into an S-Expressified version of that module.
 
-It adheres roughly to the data structure defined in the [AST module for Python](https://docs.python.org/3/library/ast.html).
+It follows the data structure defined in the [AST module for
+Python](https://docs.python.org/3/library/ast.html).
 
-The output fits the following the following grammar:
+The output fits the following grammar:
 
 
 ```
