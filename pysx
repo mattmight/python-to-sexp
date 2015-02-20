@@ -503,7 +503,6 @@ def stmt_as_sx (stmt):
   else:
     raise Exception("unhandled: " + str(type(stmt)))
 
-  res += ")"
   return res
 
 
