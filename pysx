@@ -64,7 +64,7 @@ def expr_as_sx (expr):
   # BoolOp(boolop op, expr* values):
   if type(expr) is ast.BoolOp:
     res += ("(BoolOp " + boolop_as_sx(expr.op) +" "
-            + exprs_as_sx(expr.values) +
+            + exprs_as_sx(expr.values) 
             + ")")
 
   # BinOp(expr left, operator op, expr right):
