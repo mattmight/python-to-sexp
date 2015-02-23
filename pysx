@@ -276,6 +276,7 @@ def cmpop_as_sx (op):
   if   type(op) is ast.Eq:    return "Eq"
   elif type(op) is ast.NotEq: return "NotEq"
   elif type(op) is ast.Lt:    return "Lt"
+  elif type(op) is ast.Gt:    return "Gt"
   elif type(op) is ast.LtE:   return "LtE"
   elif type(op) is ast.GtE:   return "GtE"
   elif type(op) is ast.Is:    return "Is"
