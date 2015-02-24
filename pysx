@@ -549,6 +549,7 @@ def arguments_as_sx(arguments):
     res += " (kwarg #f)"
 
   res += (" (defaults " + 
+          ' '.join('#f' for i in range(0,len(arguments.args)-len(arguments.defaults))) +
           " ".join([expr_as_sx(e) for e in arguments.defaults]) + ")")
 
   res += ")"

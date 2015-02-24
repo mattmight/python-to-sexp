@@ -136,7 +136,7 @@ The output fits the following grammar:
                    (kwonlyarg-types <expr?>*)
                    (kwdefaults <expr>*)
                    (kwarg <arg?>) 
-                   (defaults <expr>*))
+                   (defaults <expr?>*))
  
 <arg> ::= <identifier>
 
