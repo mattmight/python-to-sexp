@@ -130,10 +130,10 @@ The output fits the following grammar:
 
 <arguments> ::= (Arguments
                    (args <arg>*)
-                   (arg-types <expr>*)
+                   (arg-types <expr?>*)
                    (vararg <arg?>) 
                    (kwonlyargs <arg>*)
-                   (kwonlyarg-types <expr>*)
+                   (kwonlyarg-types <expr?>*)
                    (kwdefaults <expr>*)
                    (kwarg <arg?>) 
                    (defaults <expr>*))
