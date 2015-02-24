@@ -16,7 +16,7 @@ The output fits the following grammar:
 
         (FunctionDef
            (name <identifier>)
-           (args <expr>*)
+           (args <arguments>)
            (body <stmt>*)
            (decorator_list <expr>*)
            (returns <expr?>))
