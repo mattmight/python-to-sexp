@@ -112,7 +112,7 @@ def expr_as_sx (expr):
 
   # DictComp(expr key, expr value, comprehension* generators):
   elif type(expr) is ast.DictComp:
-    res += ("(SetComp " + expr_as_sx(expr.key) + " " + expr_as_sx(expr.value) + " "
+    res += ("(DictComp " + expr_as_sx(expr.key) + " " + expr_as_sx(expr.value) + " "
             + ' '.join([comp_as_sx(comp) for comp in expr.generators]) + ")")
 
 
