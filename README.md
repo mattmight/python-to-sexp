@@ -134,7 +134,7 @@ The output fits the following grammar:
                    (vararg <arg?>) 
                    (kwonlyargs <arg>*)
                    (kwonlyarg-types <expr?>*)
-                   (kwdefaults <expr>*)
+                   (kw_defaults <expr>*)
                    (kwarg <arg?>) 
                    (defaults <expr?>*))
  
