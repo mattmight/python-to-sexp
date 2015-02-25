@@ -90,7 +90,7 @@ def expr_as_sx (expr):
 
   # Dict(expr* keys, expr* values):
   elif type(expr) is ast.Dict:
-    res += "(Dict (keys " + ' '.join([expr_as_sx(k) for k in expr.keys]) 
+    res += "(Dict (keys " + ' '.join([expr_as_sx(k) for k in expr.keys])  + ")"
     res += " (values "+ ' '.join([expr_as_sx(v) for v in expr.values]) +")"
     res += ")"
            
