@@ -180,7 +180,7 @@ def expr_as_sx (expr):
 
   # Ellipsis:
   elif type(expr) is ast.Ellipsis:
-    res += "Ellipsis"
+    res += "(Ellipsis)"
 
   # Attribute(expr value, identifier attr, expr_context ctx):
   elif type(expr) is ast.Attribute:
