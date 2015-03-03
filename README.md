@@ -131,13 +131,11 @@ The output fits the following grammar:
 <arguments> ::= (Arguments
                    (args <identifier>*)
                    (arg-types <expr?>*)
-                   (vararg <identifier?>) 
-                   (vararg-type <expr?>)
+                   (vararg <identifier?> <expr>?) 
                    (kwonlyargs <identifier>*)
                    (kwonlyarg-types <expr?>*)
                    (kw_defaults <expr?>*)
-                   (kwarg <identifier?>) 
-                   (kwarg-type <expr?>)
+                   (kwarg <identifier?> <expr>?) 
                    (defaults <expr?>*))
  
 <keyword> ::== [<identifier> <expr>]

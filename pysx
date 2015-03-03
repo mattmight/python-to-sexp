@@ -529,9 +529,13 @@ def arguments_as_sx(arguments):
   res += " (arg-types "+ " ".join([(expr_as_sx(a.annotation) if a.annotation is not None else "#f") for a in arguments.args]) + ")"
 
   if arguments.vararg is not None:
-    res += " (vararg "+arg_as_sx(arguments.vararg)+")"
+    res += " (vararg "+arguments.vararg.arg
+    if arguments.vararg.annotation is not None:
+      res += " "+expr_as_sx(arguments.vararg.annotation)
+    res += ")"
   else:
     res += " (vararg #f)"
+
 
   res += (" (kwonlyargs "
           + " ".join([a.arg for a in arguments.kwonlyargs]) +")")
@@ -544,7 +548,10 @@ def arguments_as_sx(arguments):
                       for e in arguments.kw_defaults]) +")")
 
   if (arguments.kwarg is not None):
-    res += " (kwarg "+arg_as_sx(arguments.kwarg)+")"
+    res += " (kwarg "+arguments.kwarg.arg 
+    if arguments.kwarg.annotation is not None: 
+      res += " "+expr_as_sx(arguments.kwarg.annotation)
+    res += ")"
   else:
     res += " (kwarg #f)"
 
