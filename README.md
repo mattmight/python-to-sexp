@@ -129,17 +129,17 @@ The output fits the following grammar:
 <excepthandler> ::= [except <expr?> <identifier?> <stmt>*]
 
 <arguments> ::= (Arguments
-                   (args <arg>*)
+                   (args <identifier>*)
                    (arg-types <expr?>*)
-                   (vararg <arg?>) 
-                   (kwonlyargs <arg>*)
+                   (vararg <identifier?>) 
+                   (vararg-type <expr?>)
+                   (kwonlyargs <identifier>*)
                    (kwonlyarg-types <expr?>*)
                    (kw_defaults <expr?>*)
-                   (kwarg <arg?>) 
+                   (kwarg <identifier?>) 
+                   (kwarg-type <expr?>)
                    (defaults <expr?>*))
  
-<arg> ::= <identifier>
-
 <keyword> ::== [<identifier> <expr>]
 
 <alias> ::= [<identifier> <identifier?>]
