@@ -30,7 +30,7 @@ The output fits the following grammar:
            (body <stmt>*)
            (decorator_list <expr>*))
 
-      | (Return <expr?>)
+      | (Return <expr>?)
       | (Delete <expr>*)
 
       | (Assign (targets <expr>*) (value <expr>))
