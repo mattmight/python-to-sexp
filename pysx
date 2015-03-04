@@ -160,7 +160,7 @@ def expr_as_sx (expr):
   # Num(object n):
   elif type(expr) is ast.Num:
     if type(expr.n) == complex:
-      res += "(Num "+str(expr.n.real)+"+"+str(expr.n.imag)+"j)"
+      res += "(Num "+str(expr.n.real)+"+"+str(expr.n.imag)+"i)"
     else:
       res += "(Num "+str(expr.n)+")"
 
